@@ -1,0 +1,12 @@
+{
+  "domain": "listonic",
+  "name": "Listonic Shopping Lists",
+  "codeowners": ["@omelhus"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/omelhus/hass-listonic",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/omelhus/hass-listonic/issues",
+  "requirements": ["aiohttp>=3.9.0"],
+  "version": "0.1.0"
+}
