@@ -1,7 +1,9 @@
 """Integration tests for the Listonic API client.
 
 These tests make real API calls to verify the integration works correctly.
-They require valid credentials in the .env file.
+They require valid credentials in environment variables:
+- LISTONIC_EMAIL
+- LISTONIC_PASSWORD
 """
 
 from __future__ import annotations
@@ -18,6 +20,9 @@ from custom_components.listonic.api import (
 
 # Load environment variables
 load_dotenv()
+
+# Prefix for test lists - used for cleanup
+TEST_LIST_PREFIX = "HA Integration Test"
 
 # Skip all tests if no credentials are available
 pytestmark = pytest.mark.skipif(
@@ -36,6 +41,36 @@ async def client():
     await client.close()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_lists():
+    """Clean up any leftover test lists after all tests complete."""
+    # Run tests first
+    yield
+
+    # Cleanup after all tests
+    import asyncio
+
+    async def do_cleanup():
+        email = os.getenv("LISTONIC_EMAIL", "")
+        password = os.getenv("LISTONIC_PASSWORD", "")
+        if not email or not password:
+            return
+
+        client = ListonicApiClient(email, password)
+        try:
+            lists = await client.get_lists()
+            for lst in lists:
+                if lst.name.startswith(TEST_LIST_PREFIX):
+                    print(f"Cleaning up test list: {lst.name}")
+                    await client.delete_list(lst.id)
+        except Exception as e:
+            print(f"Cleanup error: {e}")
+        finally:
+            await client.close()
+
+    asyncio.get_event_loop().run_until_complete(do_cleanup())
+
+
 class TestListonicIntegration:
     """Integration tests that make real API calls."""
 
@@ -51,8 +86,8 @@ class TestListonicIntegration:
         """Test getting lists from the API."""
         lists = await client.get_lists()
 
-        # Should have at least one list
-        assert len(lists) > 0
+        # Returns a list (may be empty for fresh accounts)
+        assert isinstance(lists, list)
 
         # Each list should have required properties
         for lst in lists:

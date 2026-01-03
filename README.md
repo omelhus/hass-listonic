@@ -105,12 +105,37 @@ cd hass-listonic
 # Install dependencies with uv
 uv sync --all-extras
 
-# Run tests
-uv run pytest
+# Run unit tests
+uv run pytest tests/test_api.py
 
-# Run tests with coverage
+# Run integration tests (requires credentials)
+export LISTONIC_EMAIL="your@email.com"
+export LISTONIC_PASSWORD="yourpassword"
+uv run pytest tests/test_integration.py
+
+# Run all tests with coverage
 uv run pytest --cov=custom_components/listonic
 ```
+
+### GitHub Actions
+
+The repository uses GitHub Actions for CI/CD:
+
+- **Unit Tests**: Run on every push and PR
+- **Integration Tests**: Run on PRs against real API (requires secrets)
+- **Lint**: Ruff and mypy checks
+- **Credential Check**: Hourly check for API credential changes
+
+#### Required Secrets for Integration Tests
+
+Add these secrets to your repository settings:
+
+| Secret | Description |
+|--------|-------------|
+| `LISTONIC_TEST_EMAIL` | Test account email |
+| `LISTONIC_TEST_PASSWORD` | Test account password |
+
+Integration tests automatically clean up any test data created during runs.
 
 ## License
 

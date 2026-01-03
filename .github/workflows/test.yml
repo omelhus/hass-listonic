@@ -1,0 +1,104 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run unit tests
+        run: uv run pytest tests/test_api.py -v
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    # Only run on PRs and main branch, not on forks (secrets not available)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run integration tests
+        env:
+          LISTONIC_EMAIL: ${{ secrets.LISTONIC_TEST_EMAIL }}
+          LISTONIC_PASSWORD: ${{ secrets.LISTONIC_TEST_PASSWORD }}
+        run: uv run pytest tests/test_integration.py -v --tb=short
+
+      - name: Cleanup test data on failure
+        if: failure()
+        env:
+          LISTONIC_EMAIL: ${{ secrets.LISTONIC_TEST_EMAIL }}
+          LISTONIC_PASSWORD: ${{ secrets.LISTONIC_TEST_PASSWORD }}
+        run: |
+          uv run python -c "
+          import asyncio
+          import os
+          from custom_components.listonic.api import ListonicApiClient
+
+          async def cleanup():
+              client = ListonicApiClient(
+                  os.environ['LISTONIC_EMAIL'],
+                  os.environ['LISTONIC_PASSWORD']
+              )
+              try:
+                  lists = await client.get_lists()
+                  for lst in lists:
+                      if lst.name.startswith('HA Integration Test'):
+                          print(f'Cleaning up: {lst.name}')
+                          await client.delete_list(lst.id)
+              finally:
+                  await client.close()
+
+          asyncio.run(cleanup())
+          "
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run ruff
+        run: uv run ruff check .
+
+      - name: Run mypy
+        run: uv run mypy custom_components/listonic --ignore-missing-imports
