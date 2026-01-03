@@ -16,9 +16,12 @@ REDIRECT_URI = "https://listonicv2api.jestemkucharzem.pl"
 # Config
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
+CONF_SCAN_INTERVAL = "scan_interval"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = 30  # seconds
+MIN_SCAN_INTERVAL = 10  # seconds
+MAX_SCAN_INTERVAL = 3600  # seconds
 
 # Attributes
 ATTR_LIST_ID = "list_id"

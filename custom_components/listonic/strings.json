@@ -8,6 +8,13 @@
           "email": "Email",
           "password": "Password"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Listonic",
+        "description": "Your Listonic credentials for {email} are no longer valid. Please enter your new password.",
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -16,7 +23,22 @@
       "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "This account is already configured"
+      "already_configured": "This account is already configured",
+      "reauth_successful": "Reauthentication successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Listonic Options",
+        "description": "Configure the Listonic integration settings.",
+        "data": {
+          "scan_interval": "Scan interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll the Listonic API for updates (10-3600 seconds)."
+        }
+      }
     }
   }
 }

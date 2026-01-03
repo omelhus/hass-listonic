@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING
 
 from homeassistant.components.todo import (
@@ -12,6 +13,7 @@ from homeassistant.components.todo import (
     TodoListEntityFeature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -24,6 +26,29 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+# Pattern to match "(quantity unit)" or "(quantity)" at end of string
+_QUANTITY_PATTERN = re.compile(r"^(.+?)\s*\((\d+(?:[.,]\d+)?)\s*([^)]*)\)\s*$")
+
+
+def _parse_item_summary(summary: str) -> tuple[str, str | None, str | None]:
+    """Parse item name, quantity, and unit from summary.
+
+    Examples:
+        "Milk (2 L)" -> ("Milk", "2", "L")
+        "Eggs (12)" -> ("Eggs", "12", None)
+        "Bread" -> ("Bread", None, None)
+        "Butter (0.5 kg)" -> ("Butter", "0.5", "kg")
+    """
+    match = _QUANTITY_PATTERN.match(summary)
+    if not match:
+        return (summary.strip(), None, None)
+
+    name = match.group(1).strip()
+    quantity = match.group(2)
+    unit = match.group(3).strip() if match.group(3).strip() else None
+
+    return (name, quantity, unit)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -33,9 +58,12 @@ async def async_setup_entry(
     """Set up Listonic todo entities."""
     coordinator = entry.runtime_data
 
+    # Track list IDs that have entities created
+    known_list_ids: set[int] = set(coordinator.data.keys())
+
     entities = [
         ListonicTodoListEntity(coordinator, list_id)
-        for list_id in coordinator.data
+        for list_id in known_list_ids
     ]
 
     async_add_entities(entities)
@@ -44,20 +72,13 @@ async def async_setup_entry(
     @callback
     def async_check_new_lists() -> None:
         """Check for new lists and add entities."""
-        existing_list_ids = {
-            entity.list_id
-            for entity in hass.data.get(DOMAIN, {}).get("entities", [])
-        }
-        new_lists = [
-            list_id
-            for list_id in coordinator.data
-            if list_id not in existing_list_ids
-        ]
-        if new_lists:
+        new_list_ids = set(coordinator.data.keys()) - known_list_ids
+        if new_list_ids:
+            known_list_ids.update(new_list_ids)
             async_add_entities(
                 [
                     ListonicTodoListEntity(coordinator, list_id)
-                    for list_id in new_lists
+                    for list_id in new_list_ids
                 ]
             )
 
@@ -98,6 +119,17 @@ class ListonicTodoListEntity(
         if self._list:
             return self._list.name
         return f"Listonic List {self.list_id}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information about this Listonic account."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.coordinator.config_entry.entry_id)},
+            name="Listonic",
+            manufacturer="Listonic",
+            model="Shopping Lists",
+            entry_type=DeviceEntryType.SERVICE,
+        )
 
     @property
     def todo_items(self) -> list[TodoItem] | None:
@@ -146,9 +178,13 @@ class ListonicTodoListEntity(
         """Create a new todo item."""
         if not item.summary:
             return
+
+        name, quantity, unit = _parse_item_summary(item.summary)
         await self.coordinator.async_add_item(
             self.list_id,
-            item.summary,
+            name,
+            quantity=quantity,
+            unit=unit,
         )
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
@@ -169,18 +205,13 @@ class ListonicTodoListEntity(
                 await self.coordinator.async_check_item(self.list_id, item_id)
             else:
                 await self.coordinator.async_uncheck_item(self.list_id, item_id)
-        else:
-            # Update other properties
-            updates = {}
-            if item.description is not None:
-                updates["description"] = item.description
-            if updates:
-                await self.coordinator.async_update_item(
-                    self.list_id, item_id, **updates
-                )
+        elif item.description is not None:
+            # Update description when status unchanged
+            await self.coordinator.async_update_item(
+                self.list_id, item_id, description=item.description
+            )
 
     async def async_delete_todo_items(self, uids: list[str]) -> None:
         """Delete todo items."""
-        for uid in uids:
-            item_id = int(uid)
-            await self.coordinator.async_delete_item(self.list_id, item_id)
+        item_ids = [int(uid) for uid in uids]
+        await self.coordinator.async_delete_items(self.list_id, item_ids)

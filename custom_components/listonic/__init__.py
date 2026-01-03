@@ -3,14 +3,21 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import ListonicApiClient
-from .const import CONF_EMAIL, CONF_PASSWORD
+from .api import ListonicApiClient, ListonicAuthError
+from .const import (
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+)
 from .const import DOMAIN as DOMAIN
 from .coordinator import ListonicDataUpdateCoordinator
 
@@ -31,17 +38,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ListonicConfigEntry) -> 
         session=session,
     )
 
-    # Authenticate on setup
-    await client.authenticate()
+    # Authenticate on setup - raises ConfigEntryAuthFailed to trigger reauth
+    try:
+        await client.authenticate()
+    except ListonicAuthError as err:
+        raise ConfigEntryAuthFailed("Invalid credentials") from err
 
-    coordinator = ListonicDataUpdateCoordinator(hass, client)
+    # Get scan interval from options, falling back to default
+    scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+
+    coordinator = ListonicDataUpdateCoordinator(
+        hass, client, entry, scan_interval=scan_interval
+    )
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
 
+    # Register options update listener
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+async def _async_update_listener(
+    hass: HomeAssistant, entry: ListonicConfigEntry
+) -> None:
+    """Handle options update."""
+    coordinator = entry.runtime_data
+    scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    coordinator.update_interval = timedelta(seconds=scan_interval)
+    _LOGGER.debug("Updated scan interval to %s seconds", scan_interval)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ListonicConfigEntry) -> bool:
