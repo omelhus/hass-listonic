@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  UV_SYSTEM_PYTHON: 1
-
 jobs:
   unit-tests:
     name: Unit Tests
@@ -20,17 +17,17 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+        run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv pip install -e ".[dev]"
+        run: uv sync --all-extras
 
       - name: Run unit tests
-        run: pytest tests/test_api.py -v
+        run: uv run pytest tests/test_api.py -v
 
   integration-tests:
     name: Integration Tests
@@ -44,20 +41,20 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+        run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv pip install -e ".[dev]"
+        run: uv sync --all-extras
 
       - name: Run integration tests
         env:
           LISTONIC_EMAIL: ${{ secrets.LISTONIC_TEST_EMAIL }}
           LISTONIC_PASSWORD: ${{ secrets.LISTONIC_TEST_PASSWORD }}
-        run: pytest tests/test_integration.py -v --tb=short
+        run: uv run pytest tests/test_integration.py -v --tb=short
 
       - name: Cleanup test data on failure
         if: failure()
@@ -65,7 +62,7 @@ jobs:
           LISTONIC_EMAIL: ${{ secrets.LISTONIC_TEST_EMAIL }}
           LISTONIC_PASSWORD: ${{ secrets.LISTONIC_TEST_PASSWORD }}
         run: |
-          python -c "
+          uv run python -c "
           import asyncio
           import os
           from custom_components.listonic.api import ListonicApiClient
@@ -97,17 +94,17 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+        run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv pip install -e ".[dev]"
+        run: uv sync --all-extras
 
       - name: Run ruff
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Run mypy
-        run: mypy custom_components/listonic --ignore-missing-imports
+        run: uv run mypy custom_components/listonic --ignore-missing-imports
