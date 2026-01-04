@@ -4,9 +4,9 @@
   "codeowners": ["@omelhus"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/omelhus/hass-listonic",
+  "documentation": "https://github.com/omelhus/ha-listonic",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/omelhus/hass-listonic/issues",
+  "issue_tracker": "https://github.com/omelhus/ha-listonic/issues",
   "requirements": ["aiohttp>=3.9.0"],
   "version": "0.3.0"
 }

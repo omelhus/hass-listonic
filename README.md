@@ -1,7 +1,7 @@
 # Listonic Shopping Lists for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=omelhus&repository=hass-listonic&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=omelhus&repository=ha-listonic&category=integration)
 
 A Home Assistant custom component that integrates with [Listonic](https://listonic.com) shopping list app.
 
@@ -24,7 +24,7 @@ Click the button above or:
 2. Click on "Integrations"
 3. Click the three dots in the top right corner
 4. Select "Custom repositories"
-5. Add this repository URL: `https://github.com/omelhus/hass-listonic`
+5. Add this repository URL: `https://github.com/omelhus/ha-listonic`
 6. Select "Integration" as the category
 7. Click "Add"
 8. Search for "Listonic" and install it
@@ -102,8 +102,8 @@ data:
 
 ```bash
 # Clone the repository
-git clone https://github.com/omelhus/hass-listonic.git
-cd hass-listonic
+git clone https://github.com/omelhus/ha-listonic.git
+cd ha-listonic
 
 # Install dependencies with uv
 uv sync --all-extras
